@@ -124,7 +124,7 @@ for economy in APEC_economies:
                 # Supply results df to fill in
                 subfuels_supply_df = scenario_results_df[(scenario_results_df['subfuels'] == fuel) &
                                             (scenario_results_df['sectors'].isin(all_supply)) &
-                                            (scenario_results_df['sub1sectors'] == 'x')].copy().reset_index(drop = True)
+                                            (scenario_results_df['sub1sectors'] == 'x')].copy().reset_index(drop = True).iloc[:, :-3]
                 
                 # Calculate production, imports and exports for each projection year for every subfuel defined in the subfuels list
                 for year in proj_years_str:
