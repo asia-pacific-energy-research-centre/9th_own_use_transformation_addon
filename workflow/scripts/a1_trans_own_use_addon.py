@@ -44,7 +44,7 @@ for economy in APEC_economies:
         os.makedirs(save_location)
 
     # This is the location where the merged TFC and transformation results are provided
-    modelled_result = './data/paste_TFC_trans_integration_here/'
+    modelled_result = './data/copy TFC + Transformation here/'
 
     file_prefix = 'merged_file_' + economy
 
