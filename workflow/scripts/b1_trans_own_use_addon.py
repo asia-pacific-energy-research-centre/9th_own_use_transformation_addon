@@ -14,13 +14,16 @@ with open(config_file) as infile:
 # Grab APEC economies (economy_list defined in config file)
 APEC_economies = list(economy_list)[:-7]
 
-# 2021 and beyond
-proj_years = list(range(2021, 2071, 1))
+# 2022 and beyond
+proj_years = list(range(2022, 2071, 1))
 proj_years_str = [str(i) for i in proj_years]
 
 # latest EGEDA data
 EGEDA_df = pd.read_csv(latest_EGEDA)
+EGEDA_df = EGEDA_df.drop(columns = ['is_subtotal']).copy().reset_index(drop = True)
+
 EGEDA_df[EGEDA_df['sub1sectors'].str.startswith('09')]['sub1sectors'].unique()
+EGEDA_df[EGEDA_df['sub1sectors'].str.startswith('10')]['sub2sectors'].unique()
 
 # sub1sectors transformation categories that need to be modelled
 trans_df = pd.read_csv('./data/config/transformation_orphans.csv', header = None)
@@ -38,15 +41,15 @@ EGEDA_own = EGEDA_df[EGEDA_df['sub2sectors'].isin(ownuse_cats)].copy().reset_ind
 
 for economy in APEC_economies:
     # Save location
-    save_location = './results/01_trans_own_addon/{}/'.format(economy)
+    save_location = './results/02_trans_own_addon/{}/'.format(economy)
 
     if not os.path.isdir(save_location):
         os.makedirs(save_location)
 
     # This is the location where the merged TFC and transformation results are provided
-    modelled_result = './data/copy TFC + Transformation here/'
+    modelled_result = './data/copy 02_TFC here/'
 
-    file_prefix = 'merged_file_' + economy
+    file_prefix = 'merged_file*' + economy
 
     # Define vector with file names
     files = glob.glob(modelled_result + file_prefix + '*.csv')
@@ -75,28 +78,27 @@ for economy in APEC_economies:
         
         for scenario in scenario_dict.keys():
             # Data frame with results from other sectors to use to build trajectories to fill the trans and own df's
-            tfc_trans_df = scenario_dict[scenario][0]
+            tfc_df = scenario_dict[scenario][0]
             # Subset so only consumption categories are included
-            trans_df = tfc_trans_df[(tfc_trans_df['sectors'].isin(['09_total_transformation_sector'])) &
-                                    (tfc_trans_df['sub1sectors'] == 'x')].copy().reset_index(drop = True)
+            # Transformation results below no longer used. Only TFC trajectories are used for modelling of categories defined in this script
+            # trans_df = tfc_trans_df[(tfc_trans_df['sectors'].isin(['09_total_transformation_sector'])) &
+            #                         (tfc_trans_df['sub1sectors'] == 'x')].copy().reset_index(drop = True)
             
-            for column in trans_df.columns:
-                if pd.api.types.is_numeric_dtype(trans_df[column]):
-                    trans_df[column] = trans_df[column].abs()
+            # for column in trans_df.columns:
+            #     if pd.api.types.is_numeric_dtype(trans_df[column]):
+            #         trans_df[column] = trans_df[column].abs()
 
-            tfc_df = tfc_trans_df[(tfc_trans_df['sectors'].isin(['12_total_final_consumption'])) &
-                                  (tfc_trans_df['sub1sectors'] == 'x')].copy().reset_index(drop = True)
-            
-            tfc_trans_df = pd.concat([trans_df, tfc_df]).copy().reset_index(drop = True)
+            tfc_df = tfc_df[(tfc_df['sectors'].isin(['12_total_final_consumption'])) &
+                            (tfc_df['sub1sectors'] == 'x')].copy().reset_index(drop = True)
 
-            # Subset so its only high level fuels and sum tfc and transformation
-            tfc_trans_df = tfc_trans_df[tfc_trans_df['subfuels'] == 'x']\
-                .groupby(['scenarios', 'economy', 'sub1sectors', 'sub2sectors', 'sub3sectors', 'sub4sectors', 'subfuels', 'fuels'])\
-                    .sum().reset_index().assign(sectors = 'consumption tfc trans')
+            # Subset so its only high level fuels
+            tfc_df = tfc_df[tfc_df['subfuels'] == 'x']
+                # .groupby(['scenarios', 'economy', 'sub1sectors', 'sub2sectors', 'sub3sectors', 'sub4sectors', 'subfuels', 'fuels'])\
+                #     .sum().reset_index().assign(sectors = 'TFC consumption')
             
             # Now only keep relevant fuels 
-            tfc_trans_df = tfc_trans_df[tfc_trans_df['fuels'].isin(relevant_fuels)].copy().reset_index(drop = True)
-            tfc_trans_df = tfc_trans_df.fillna(0)
+            tfc_df = tfc_df[tfc_df['fuels'].isin(relevant_fuels)].copy().reset_index(drop = True)
+            tfc_df = tfc_df.fillna(0)
             
             # Dataframes to populate
             trans_df = scenario_dict[scenario][1]
@@ -108,8 +110,8 @@ for economy in APEC_economies:
             trans_results_df = pd.DataFrame(columns = trans_df.columns)
             own_results_df = pd.DataFrame(columns = own_df.columns)
 
-            for fuel in tfc_trans_df['fuels'].unique():
-                fuel_agg_row = tfc_trans_df[tfc_trans_df['fuels'] == fuel].copy().reset_index(drop = True)
+            for fuel in tfc_df['fuels'].unique():
+                fuel_agg_row = tfc_df[tfc_df['fuels'] == fuel].copy().reset_index(drop = True)
 
                 trans_results_interim = trans_df[trans_df['fuels'] == fuel].copy().reset_index(drop = True)
                 own_results_interim = own_df[own_df['fuels'] == fuel].copy().reset_index(drop = True)

@@ -18,19 +18,20 @@ with open(config_file) as infile:
 
 # Grab APEC economies (economy_list defined in config file)
 APEC_economies = list(economy_list)[:-7]
-# APEC_economies = APEC_economies[18:19]
+# APEC_economies = APEC_economies[19:20]
 
-# 2021 and beyond
-proj_years = list(range(2021, 2071, 1))
+# 2022 and beyond
+proj_years = list(range(2022, 2071, 1))
 proj_years_str = [str(i) for i in proj_years]
 
-latest_hist = '2020'
+latest_hist = '2021'
 ref_elec = 0.002
 tgt_elec = 0.004
 switch_start_year = '2025'
 
 # latest EGEDA data
 EGEDA_df = pd.read_csv(latest_EGEDA)
+EGEDA_df = EGEDA_df.drop(columns = ['is_subtotal']).copy().reset_index(drop = True)
 
 # Pipeline fuels
 relevant_fuels = ['07_petroleum_products', '08_gas', '17_electricity', '19_total']
@@ -42,15 +43,15 @@ EGEDA_pipe = EGEDA_df[(EGEDA_df['sub1sectors'] == '15_05_pipeline_transport') &
 
 for economy in APEC_economies:
     # Save location
-    save_location = './results/03_pipeline_transport/{}/'.format(economy)
+    save_location = './results/01_pipeline_transport/{}/'.format(economy)
 
     if not os.path.isdir(save_location):
         os.makedirs(save_location)
 
-    # This is the location where the merged TFC and transformation results are provided
+    # This is the location where the merged TFC results are provided
     modelled_result = './data/copy 02_TFC here/'
 
-    file_prefix = 'merged_file_' + economy
+    file_prefix = 'merged_file*' + economy
 
     # Define vector with file names
     files = glob.glob(modelled_result + file_prefix + '*.csv')
@@ -85,7 +86,7 @@ for economy in APEC_economies:
             # Fill NA so they're zeroes instead
             tfc_df = tfc_df.fillna(0)
 
-            # Sum consumption (TFC and transformation)
+            # Sum consumption (TFC)
             tfc_df = tfc_df.groupby(['scenarios', 'economy', 'sub1sectors', 'sub2sectors', 'sub3sectors', 'sub4sectors', 'subfuels', 'fuels'])\
                     .sum().reset_index().assign(sectors = 'tfc')
 
@@ -94,13 +95,13 @@ for economy in APEC_economies:
             pipe_df = pipe_df.fillna(0)
         
             # Define ratio dataframe
-            ratio_df = pd.DataFrame(columns = ['fuels', '2020'] + proj_years_str)
+            ratio_df = pd.DataFrame(columns = ['fuels', latest_hist] + proj_years_str)
             ratio_df.loc[0, 'fuels'] = '07_petroleum_products'
             ratio_df.loc[1, 'fuels'] = '08_gas'
             ratio_df.loc[2, 'fuels'] = '17_electricity'
 
             # Define ratio in most recent historical
-            for year in ['2020'] + proj_years_str:
+            for year in [latest_hist] + proj_years_str:
                 for fuel in relevant_fuels[:-1]:
                     if pipe_df.loc[pipe_df['fuels'] == '19_total', latest_hist].values[0] == 0:
                         ratio_df.loc[ratio_df['fuels'] == fuel, year] = 0

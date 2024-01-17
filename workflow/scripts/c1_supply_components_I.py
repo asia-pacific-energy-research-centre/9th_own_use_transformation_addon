@@ -16,13 +16,14 @@ APEC_economies = list(economy_list)[:-7]
 APEC_economies = APEC_economies[18:19]
 
 # 2021 and beyond
-proj_years = list(range(2021, 2071, 1))
+proj_years = list(range(2022, 2071, 1))
 proj_years_str = [str(i) for i in proj_years]
 
-latest_hist = '2020'
+latest_hist = '2021'
 
 # latest EGEDA data
 EGEDA_df = pd.read_csv(latest_EGEDA)
+EGEDA_df = EGEDA_df.drop(columns = ['is_subtotal']).copy().reset_index(drop = True)
 
 # sub1sectors transformation categories that need to be modelled
 biomass_subfuel_df = pd.read_csv('./data/config/biomass_subfuels.csv', header = None)
@@ -104,7 +105,7 @@ for economy in APEC_economies:
                 # Add the row to the other consumption rows
                 all_cons = pd.concat([all_cons, total_row]).copy().reset_index(drop = True)
 
-                # Now grab TPES, but just for 2020 in order to get a ratio and apply it for projected results
+                # Now grab TPES, but just for 2021 in order to get a ratio and apply it for projected results
                 current_supply = scenario_results_df[(scenario_results_df['subfuels'] == fuel) &
                                             (scenario_results_df['sectors'].isin(relevant_supply)) &
                                             (scenario_results_df['sub1sectors'] == 'x')].copy().reset_index(drop = True)\
