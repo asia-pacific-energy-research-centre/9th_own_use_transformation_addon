@@ -15,11 +15,11 @@ with open(config_file) as infile:
 APEC_economies = list(economy_list)[:-7]
 APEC_economies = APEC_economies[18:19]
 
-# 2021 and beyond
+# 2022 and beyond
 proj_years = list(range(2022, 2071, 1))
 proj_years_str = [str(i) for i in proj_years]
 
-latest_hist = '2021'
+latest_hist = str(proj_years[0] - 1)
 
 # latest EGEDA data
 EGEDA_df = pd.read_csv(latest_EGEDA)
@@ -28,25 +28,33 @@ EGEDA_df = EGEDA_df.drop(columns = ['is_subtotal']).copy().reset_index(drop = Tr
 # sub1sectors transformation categories that need to be modelled
 biomass_subfuel_df = pd.read_csv('./data/config/biomass_subfuels.csv', header = None)
 others_subfuel_df = pd.read_csv('./data/config/others_subfuels.csv', header = None)
+lignite_subfuel_df = pd.read_csv('./data/config/lignite_subfuels.csv', header = None)
 
-subfuels_list = biomass_subfuel_df[0].values.tolist() + others_subfuel_df[0].values.tolist()
+subfuels_list = lignite_subfuel_df[0].values.tolist() + biomass_subfuel_df[0].values.tolist() + others_subfuel_df[0].values.tolist()
 
 relevant_supply = ['01_production', '02_imports', '03_exports']
 all_supply = ['01_production', '02_imports', '03_exports', '04_international_marine_bunkers', '05_international_aviation_bunkers',
               '06_stock_changes', '07_total_primary_energy_supply']
 
+# Define columns for use
+df_columns = ['scenarios', 'economy', 'sectors', 'sub1sectors', 'sub2sectors', 'sub3sectors', 'sub4sectors', 'fuels', 'subfuels']
+all_years = list(range(1980, 2071, 1))
+years_str = [str(i) for i in all_years]
+
+df_columns = df_columns + years_str
+
 for economy in APEC_economies:
     # Save location
-    save_location = './results/02_supply_results/{}/'.format(economy)
+    save_location = './results/03_supply_results/{}/'.format(economy)
 
     if not os.path.isdir(save_location):
         os.makedirs(save_location)
 
     # This is the location where the merged TFC and transformation results are provided
-    modelled_result = './data/copy 06b_ready_for_TPES here/'
+    modelled_result = './data/copy 06_TFC+Transformation here/'
 
     # Read in results dataframe
-    file_prefix = 'merged_file_' + economy
+    file_prefix = 'merged_file_*' + economy
 
     # Define vector with file names
     files = glob.glob(modelled_result + file_prefix + '*.csv')
@@ -57,6 +65,9 @@ for economy in APEC_economies:
         merged_file_date = re.search(r'(\d{4})(\d{2})(\d{2})', latest_file).group(0)
 
         results_df = pd.read_csv(latest_file)
+        # Remove unnecessary columns
+        results_df = results_df.loc[:, df_columns]
+
         results_ref = results_df[results_df['scenarios'] == 'reference'].copy().reset_index(drop = True)
         results_tgt = results_df[results_df['scenarios'] == 'target'].copy().reset_index(drop = True)
 
@@ -69,30 +80,60 @@ for economy in APEC_economies:
             # Creat empty dataframe to save results
             supply_df = pd.DataFrame()
             
-            for fuel in subfuels_list:
-                # Consumption results are: TFC, transformation and own-use
-                # Transformation
-                trans_ref = scenario_results_df[(scenario_results_df['subfuels'] == fuel) &
-                                        (scenario_results_df['sectors'] == '09_total_transformation_sector') &
-                                        (scenario_results_df['sub1sectors'] == 'x')].copy().reset_index(drop = True).fillna(0).iloc[:,:-3]
-                
-                # Transformation is negative so need to be made positive to calculate total consumption
-                numeric_trans = trans_ref.iloc[:, 9:] * -1
-                trans_ref.iloc[:, 9:] = numeric_trans
-                
-                # Own-use
-                own_ref = scenario_results_df[(scenario_results_df['subfuels'] == fuel) &
-                                    (scenario_results_df['sectors'] == '10_losses_and_own_use') &
-                                    (scenario_results_df['sub1sectors'] == 'x')].copy().reset_index(drop = True).fillna(0).iloc[:,:-3]
-                
-                # Own-use is negative so need to be made positive to calculate total consumption
-                numeric_own = own_ref.iloc[:, 9:] * -1
-                own_ref.iloc[:, 9:] = numeric_own
-                
-                # TFC
-                tfc_ref = scenario_results_df[(scenario_results_df['subfuels'] == fuel) &
-                                    (scenario_results_df['sectors'] == '12_total_final_consumption') &
-                                    (scenario_results_df['sub1sectors'] == 'x')].copy().reset_index(drop = True).fillna(0).iloc[:,:-3]
+            for fuel in subfuels_list + ['x']:
+                if fuel != 'x': 
+                    # Consumption results are: TFC, transformation and own-use
+                    # Transformation
+                    trans_ref = scenario_results_df[(scenario_results_df['subfuels'] == fuel) &
+                                                    (scenario_results_df['sectors'] == '09_total_transformation_sector') &
+                                                    (scenario_results_df['sub1sectors'] == 'x')].copy().reset_index(drop = True).fillna(0)
+                    
+                    # Transformation is negative so need to be made positive to calculate total consumption
+                    numeric_trans = trans_ref.iloc[:, 9:] * -1
+                    trans_ref.iloc[:, 9:] = numeric_trans
+                    
+                    # Own-use
+                    own_ref = scenario_results_df[(scenario_results_df['subfuels'] == fuel) &
+                                                  (scenario_results_df['sectors'] == '10_losses_and_own_use') &
+                                                  (scenario_results_df['sub1sectors'] == 'x')].copy().reset_index(drop = True).fillna(0)
+                    
+                    # Own-use is negative so need to be made positive to calculate total consumption
+                    numeric_own = own_ref.iloc[:, 9:] * -1
+                    own_ref.iloc[:, 9:] = numeric_own
+                    
+                    # TFC
+                    tfc_ref = scenario_results_df[(scenario_results_df['subfuels'] == fuel) &
+                                                  (scenario_results_df['sectors'] == '12_total_final_consumption') &
+                                                  (scenario_results_df['sub1sectors'] == 'x')].copy().reset_index(drop = True).fillna(0)
+                    
+                elif fuel == 'x':
+                    # Same as above but for coal products
+                    # Consumption results are: TFC, transformation and own-use
+                    # Transformation
+                    trans_ref = scenario_results_df[(scenario_results_df['fuels'] == '02_coal_products') &
+                                                    (scenario_results_df['subfuels'] == fuel) &
+                                                    (scenario_results_df['sectors'] == '09_total_transformation_sector') &
+                                                    (scenario_results_df['sub1sectors'] == 'x')].copy().reset_index(drop = True).fillna(0)
+                    
+                    # Transformation is negative so need to be made positive to calculate total consumption
+                    numeric_trans = trans_ref.iloc[:, 9:] * -1
+                    trans_ref.iloc[:, 9:] = numeric_trans
+                    
+                    # Own-use
+                    own_ref = scenario_results_df[(scenario_results_df['fuels'] == '02_coal_products') &
+                                                  (scenario_results_df['subfuels'] == fuel) &
+                                                  (scenario_results_df['sectors'] == '10_losses_and_own_use') &
+                                                  (scenario_results_df['sub1sectors'] == 'x')].copy().reset_index(drop = True).fillna(0)
+                    
+                    # Own-use is negative so need to be made positive to calculate total consumption
+                    numeric_own = own_ref.iloc[:, 9:] * -1
+                    own_ref.iloc[:, 9:] = numeric_own
+                    
+                    # TFC
+                    tfc_ref = scenario_results_df[(scenario_results_df['fuels'] == '02_coal_products') &
+                                                  (scenario_results_df['subfuels'] == fuel) &
+                                                  (scenario_results_df['sectors'] == '12_total_final_consumption') &
+                                                  (scenario_results_df['sub1sectors'] == 'x')].copy().reset_index(drop = True).fillna(0)
                 
                 # Combine
                 all_cons = pd.concat([trans_ref, own_ref, tfc_ref]).copy().reset_index(drop = True)
@@ -106,13 +147,21 @@ for economy in APEC_economies:
                 all_cons = pd.concat([all_cons, total_row]).copy().reset_index(drop = True)
 
                 # Now grab TPES, but just for 2021 in order to get a ratio and apply it for projected results
-                current_supply = scenario_results_df[(scenario_results_df['subfuels'] == fuel) &
-                                            (scenario_results_df['sectors'].isin(relevant_supply)) &
-                                            (scenario_results_df['sub1sectors'] == 'x')].copy().reset_index(drop = True)\
-                                                .fillna(0).loc[:, ['sectors', latest_hist]]
+                if fuel != 'x':             
+                    current_supply = scenario_results_df[(scenario_results_df['subfuels'] == fuel) &
+                                                        (scenario_results_df['sectors'].isin(relevant_supply)) &
+                                                        (scenario_results_df['sub1sectors'] == 'x')].copy().reset_index(drop = True)\
+                                                            .fillna(0).loc[:, ['sectors', latest_hist]]
                 
+                elif fuel == 'x':             
+                    current_supply = scenario_results_df[(scenario_results_df['fuels'] == '02_coal_products') &
+                                                         (scenario_results_df['subfuels'] == fuel) &
+                                                         (scenario_results_df['sectors'].isin(relevant_supply)) &
+                                                         (scenario_results_df['sub1sectors'] == 'x')].copy().reset_index(drop = True)\
+                                                             .fillna(0).loc[:, ['sectors', latest_hist]]
+
                 # Create new column for ratio results
-                current_supply['ratio'] = np.nan
+                    current_supply['ratio'] = np.nan
 
                 # Calculate ratio
                 for row in current_supply.index:
@@ -123,9 +172,16 @@ for economy in APEC_economies:
                         current_supply.loc[row, 'ratio'] = current_supply.loc[row, latest_hist] / current_supply[latest_hist].sum()
 
                 # Supply results df to fill in
-                subfuels_supply_df = scenario_results_df[(scenario_results_df['subfuels'] == fuel) &
-                                            (scenario_results_df['sectors'].isin(all_supply)) &
-                                            (scenario_results_df['sub1sectors'] == 'x')].copy().reset_index(drop = True).iloc[:, :-3]
+                if fuel != 'x':
+                    subfuels_supply_df = scenario_results_df[(scenario_results_df['subfuels'] == fuel) &
+                                                             (scenario_results_df['sectors'].isin(all_supply)) &
+                                                             (scenario_results_df['sub1sectors'] == 'x')].copy().reset_index(drop = True)
+                    
+                elif fuel == 'x':
+                    subfuels_supply_df = scenario_results_df[(scenario_results_df['fuels'] == '02_coal_products') &
+                                                             (scenario_results_df['subfuels'] == fuel) &
+                                                             (scenario_results_df['sectors'].isin(all_supply)) &
+                                                             (scenario_results_df['sub1sectors'] == 'x')].copy().reset_index(drop = True)
                 
                 # Calculate production, imports and exports for each projection year for every subfuel defined in the subfuels list
                 for year in proj_years_str:
@@ -133,17 +189,9 @@ for economy in APEC_economies:
                         subfuels_supply_df.loc[subfuels_supply_df['sectors'] == component, year] = all_cons.loc[all_cons['sectors'] == 'Total consumption', year].values[0]\
                             * current_supply.loc[current_supply['sectors'] == component, 'ratio'].values[0]
 
-                supply_df = pd.concat([supply_df, subfuels_supply_df]).copy().reset_index(drop = True)
+                supply_df = pd.concat([supply_df, subfuels_supply_df]).copy().reset_index(drop = True)            
 
-            supply_df.to_csv(save_location + economy + '_biomass_others_supply_' + scenario + '_' + timestamp + '.csv', index = False)
-                    
-            
-
-
-
-
-
-
+            supply_df.to_csv(save_location + economy + '_biomass_others_supply_' + scenario + '_' + timestamp + '.csv', index = False)                    
 
 # What do we need to do here
 # 1. Grab fuel consumption for each of these non-major (sub)fuels for all projection years

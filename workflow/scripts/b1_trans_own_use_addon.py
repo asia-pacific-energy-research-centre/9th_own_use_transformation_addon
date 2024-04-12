@@ -14,6 +14,14 @@ with open(config_file) as infile:
 # Grab APEC economies (economy_list defined in config file)
 APEC_economies = list(economy_list)[:-7]
 
+for index, item in enumerate(APEC_economies):
+    if (item == '17_SIN'):
+        APEC_economies[index] = '17_SGP'
+    elif (item == '15_RP'):
+        APEC_economies[index] = '15_PHL'
+
+APEC_economies = APEC_economies[4:5]
+
 # 2022 and beyond
 proj_years = list(range(2022, 2071, 1))
 proj_years_str = [str(i) for i in proj_years]
