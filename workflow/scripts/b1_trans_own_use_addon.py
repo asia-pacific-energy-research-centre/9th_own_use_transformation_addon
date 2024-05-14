@@ -20,7 +20,7 @@ for index, item in enumerate(APEC_economies):
     elif (item == '15_RP'):
         APEC_economies[index] = '15_PHL'
 
-APEC_economies = APEC_economies[4:5]
+APEC_economies = APEC_economies[6:7]
 
 # 2022 and beyond
 proj_years = list(range(2022, 2071, 1))
@@ -32,6 +32,7 @@ EGEDA_df = EGEDA_df.drop(columns = ['is_subtotal']).copy().reset_index(drop = Tr
 
 EGEDA_df[EGEDA_df['sub1sectors'].str.startswith('09')]['sub1sectors'].unique()
 EGEDA_df[EGEDA_df['sub1sectors'].str.startswith('10')]['sub2sectors'].unique()
+EGEDA_df[EGEDA_df['sub1sectors'].str.startswith('16')]['sub1sectors'].unique()
 
 # sub1sectors transformation categories that need to be modelled
 trans_df = pd.read_csv('./data/config/transformation_orphans.csv', header = None)
@@ -41,11 +42,16 @@ trans_cats = trans_df[0].values.tolist()
 ownuse_df = pd.read_csv('./data/config/ownuse_cats.csv', header = None)
 ownuse_cats = ownuse_df[0].values.tolist()
 
+# Non-specified end-use
+nonspec_df = pd.read_csv('./data/config/other_nonspec.csv', header = None)
+nonspec_cats = nonspec_df[0].values.tolist()
+
 relevant_fuels = ['01_coal', '02_coal_products', '06_crude_oil_and_ngl', '07_petroleum_products',
                   '08_gas', '15_solid_biomass', '16_others', '17_electricity', '18_heat']
 
 EGEDA_trans = EGEDA_df[EGEDA_df['sub1sectors'].isin(trans_cats)].copy().reset_index(drop = True)
 EGEDA_own = EGEDA_df[EGEDA_df['sub2sectors'].isin(ownuse_cats)].copy().reset_index(drop = True)
+EGEDA_nonspec = EGEDA_df[EGEDA_df['sub1sectors'].isin(nonspec_cats)].copy().reset_index(drop = True)
 
 for economy in APEC_economies:
     # Save location
@@ -81,8 +87,13 @@ for economy in APEC_economies:
         EGEDA_own_tgt = EGEDA_own[EGEDA_own['economy'] == economy].copy().reset_index(drop = True)
         EGEDA_own_tgt['scenarios'] = 'target'
 
-        scenario_dict = {'ref': [results_ref, EGEDA_trans_ref, EGEDA_own_ref],
-                         'tgt': [results_tgt, EGEDA_trans_tgt, EGEDA_own_tgt]}
+        # Non-specified needed
+        EGEDA_nonspec_ref = EGEDA_nonspec[EGEDA_nonspec['economy'] == economy].copy().reset_index(drop = True)
+        EGEDA_nonspec_tgt = EGEDA_nonspec[EGEDA_nonspec['economy'] == economy].copy().reset_index(drop = True)
+        EGEDA_nonspec_tgt['scenarios'] = 'target'
+
+        scenario_dict = {'ref': [results_ref, EGEDA_trans_ref, EGEDA_own_ref, EGEDA_nonspec_ref],
+                         'tgt': [results_tgt, EGEDA_trans_tgt, EGEDA_own_tgt, EGEDA_nonspec_tgt]}
         
         for scenario in scenario_dict.keys():
             # Data frame with results from other sectors to use to build trajectories to fill the trans and own df's
@@ -113,16 +124,20 @@ for economy in APEC_economies:
             trans_df = trans_df.fillna(0)
             own_df = scenario_dict[scenario][2]
             own_df = own_df.fillna(0)
+            nons_df = scenario_dict[scenario][3]
+            nons_df = nons_df.fillna(0)
 
             # Define results dataframe
             trans_results_df = pd.DataFrame(columns = trans_df.columns)
             own_results_df = pd.DataFrame(columns = own_df.columns)
+            nons_results_df = pd.DataFrame(columns = nons_df.columns)
 
             for fuel in tfc_df['fuels'].unique():
                 fuel_agg_row = tfc_df[tfc_df['fuels'] == fuel].copy().reset_index(drop = True)
 
                 trans_results_interim = trans_df[trans_df['fuels'] == fuel].copy().reset_index(drop = True)
                 own_results_interim = own_df[own_df['fuels'] == fuel].copy().reset_index(drop = True)
+                nons_results_interim = nons_df[nons_df['fuels'] == fuel].copy().reset_index(drop = True)
 
                 for year in proj_years_str:
                     if fuel_agg_row.loc[0, str(int(year) - 1)] == 0:
@@ -138,6 +153,9 @@ for economy in APEC_economies:
                     for row in own_results_interim.index:
                         own_results_interim.loc[row, year] = own_results_interim.loc[row, str(int(year) - 1)] * ratio
 
+                    for row in nons_results_interim.index:
+                        nons_results_interim.loc[row, year] = nons_results_interim.loc[row, str(int(year) - 1)] * ratio
+
                 if trans_results_df.empty:
                     trans_results_df = trans_results_interim.copy()
                 else:             
@@ -148,6 +166,12 @@ for economy in APEC_economies:
                 else:
                     own_results_df = pd.concat([own_results_df, own_results_interim]).copy().reset_index(drop = True)
 
+                if nons_results_df.empty:
+                    nons_results_df = nons_results_interim.copy()
+                else:
+                    nons_results_df = pd.concat([nons_results_df, nons_results_interim]).copy().reset_index(drop = True)
+
             trans_results_df.to_csv(save_location + economy + '_other_transformation_' + scenario + '_' + timestamp + '.csv', index = False)
             own_results_df.to_csv(save_location + economy + '_other_own_use_' + scenario + '_' + timestamp + '.csv', index = False)
+            nons_results_df.to_csv(save_location + economy + '_non_specified_' + scenario + '_' + timestamp + '.csv', index = False)
 

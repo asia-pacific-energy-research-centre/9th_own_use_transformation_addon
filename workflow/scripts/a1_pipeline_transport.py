@@ -18,7 +18,7 @@ with open(config_file) as infile:
 
 # Grab APEC economies (economy_list defined in config file)
 APEC_economies = list(economy_list)[:-7]
-APEC_economies = APEC_economies[4:5]
+APEC_economies = APEC_economies[6:7]
 
 # 2022 and beyond
 proj_years = list(range(2022, 2071, 1))
