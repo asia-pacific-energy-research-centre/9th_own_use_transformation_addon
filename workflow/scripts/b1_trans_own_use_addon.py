@@ -20,7 +20,7 @@ for index, item in enumerate(APEC_economies):
     elif (item == '15_RP'):
         APEC_economies[index] = '15_PHL'
 
-APEC_economies = APEC_economies[6:7]
+APEC_economies = APEC_economies[17:18]
 
 # 2022 and beyond
 proj_years = list(range(2022, 2071, 1))
