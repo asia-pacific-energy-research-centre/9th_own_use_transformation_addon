@@ -1,4 +1,4 @@
-# Pipeline energy consumption (even though it's within the demand block, it's only modelled after consumption of gas is determined within TFC and power)
+# Pipeline energy consumption (even though it's within the demand block, it's only modelled after consumption of gas is determined within TFC)
 
 # 07_petroleum_products
 # 08_gas

@@ -1,4 +1,5 @@
 # Modelling 9_transformation and 10_own_use_and_losses that have not been modelled by other sectors
+# Late addition to this script is non-specified demand
 # Set working directory to be the project folder 
 import os
 import re
@@ -20,7 +21,7 @@ for index, item in enumerate(APEC_economies):
     elif (item == '15_RP'):
         APEC_economies[index] = '15_PHL'
 
-APEC_economies = APEC_economies[17:18]
+APEC_economies = APEC_economies[14:15]
 
 # 2022 and beyond
 proj_years = list(range(2022, 2071, 1))

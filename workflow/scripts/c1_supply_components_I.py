@@ -1,4 +1,4 @@
-# Finalising accounting of supply components that are not coal, oil and gas
+# Finalising accounting of supply components that are not coal, oil and gas (lignite coal is modelled here given that it is rarely traded)
 # Set working directory to be the project folder 
 import os
 import re
@@ -13,7 +13,7 @@ with open(config_file) as infile:
 
 # Grab APEC economies (economy_list defined in config file)
 APEC_economies = list(economy_list)[:-7]
-APEC_economies = APEC_economies[18:19]
+APEC_economies = APEC_economies[8:9]
 
 # 2022 and beyond
 proj_years = list(range(2022, 2071, 1))
