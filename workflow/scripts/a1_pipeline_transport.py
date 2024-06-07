@@ -31,7 +31,7 @@ switch_start_year = '2025'
 
 # latest EGEDA data
 EGEDA_df = pd.read_csv(latest_EGEDA)
-EGEDA_df = EGEDA_df.drop(columns = ['is_subtotal']).copy().reset_index(drop = True)
+EGEDA_df = EGEDA_df.drop(columns = ['subtotal_layout', 'subtotal_results']).copy().reset_index(drop = True)
 
 # Pipeline fuels
 relevant_fuels = ['07_petroleum_products', '08_gas', '17_electricity', '19_total']
@@ -75,14 +75,20 @@ for economy in APEC_economies:
                          'tgt': [results_tgt, EGEDA_pipe_tgt, tgt_elec]}
         
         for scenario in scenario_dict.keys():
-            # Data frame with results from other sectors to use to build trajectories to fill the trans and own df's
-            tfc_df = scenario_dict[scenario][0]
-
-            tfc_df = tfc_df[(tfc_df['sectors'].isin(['12_total_final_consumption'])) &
-                            (tfc_df['sub1sectors'] == 'x') &
-                            (tfc_df['fuels'] == '08_gas') &
-                            (tfc_df['subfuels'] == 'x')].copy().reset_index(drop = True)
+            scenario_df = scenario_dict[scenario][0].copy()
             
+            tfc_df = scenario_df[(scenario_df['sectors'].isin(['12_total_final_consumption'])) & (scenario_df['fuels'].isin(['08_gas'])) & (scenario_df['subtotal_results'] == True)].copy().reset_index(drop = True)
+            ########
+            #and minus the pipeline use from the gas consumption in case it is in the folder, so got merged in with the other demand data
+            pipeline_nonspecified_use = scenario_df[(scenario_df['sub1sectors'].isin(['15_05_pipeline_transport', '16_05_nonspecified_others'])) & (scenario_df['fuels'].isin(['08_gas'])) & (scenario_df['subtotal_results'] == False)].copy().reset_index(drop = True)
+            if len(pipeline_nonspecified_use) > 0:
+                #sum pipeline use and nonspecified others
+                pipeline_nonspecified_use = pipeline_nonspecified_use.groupby(['scenarios','economy','fuels']).sum().reset_index()
+                #double check the two dataframes are 1 row each and then subtract the pipeline use from the gas consumption
+                if len(tfc_df) != 1 or len(pipeline_nonspecified_use) != 1:
+                    raise Exception('The consumption dataframes are not the expected length')
+                tfc_df[proj_years] = tfc_df[proj_years] - pipeline_nonspecified_use[proj_years]
+            ########
             # Fill NA so they're zeroes instead
             tfc_df = tfc_df.fillna(0)
 
