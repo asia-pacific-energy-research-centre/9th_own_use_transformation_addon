@@ -29,7 +29,7 @@ proj_years_str = [str(i) for i in proj_years]
 
 # latest EGEDA data
 EGEDA_df = pd.read_csv(latest_EGEDA)
-EGEDA_df = EGEDA_df.drop(columns = ['subtotal_layout', 'subtotal_results']).copy().reset_index(drop = True)
+EGEDA_df = EGEDA_df.drop(columns = ['is_subtotal']).copy().reset_index(drop = True)
 
 EGEDA_df[EGEDA_df['sub1sectors'].str.startswith('09')]['sub1sectors'].unique()
 EGEDA_df[EGEDA_df['sub1sectors'].str.startswith('10')]['sub2sectors'].unique()
