@@ -31,7 +31,7 @@ switch_start_year = '2025'
 
 # latest EGEDA data
 EGEDA_df = pd.read_csv(latest_EGEDA)
-EGEDA_df = EGEDA_df.drop(columns = ['subtotal_layout', 'subtotal_results']).copy().reset_index(drop = True)
+EGEDA_df = EGEDA_df.drop(columns = ['is_subtotal']).copy().reset_index(drop = True)
 
 # Pipeline fuels
 relevant_fuels = ['07_petroleum_products', '08_gas', '17_electricity', '19_total']
