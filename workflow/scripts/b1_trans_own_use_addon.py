@@ -29,7 +29,7 @@ proj_years_str = [str(i) for i in proj_years]
 
 # latest EGEDA data
 EGEDA_df = pd.read_csv(latest_EGEDA)
-EGEDA_df = EGEDA_df.drop(columns = ['is_subtotal']).copy().reset_index(drop = True)
+EGEDA_df = EGEDA_df.drop(columns = ['subtotal_layout', 'subtotal_results']).copy().reset_index(drop = True)
 
 EGEDA_df[EGEDA_df['sub1sectors'].str.startswith('09')]['sub1sectors'].unique()
 EGEDA_df[EGEDA_df['sub1sectors'].str.startswith('10')]['sub2sectors'].unique()
@@ -97,27 +97,22 @@ for economy in APEC_economies:
                          'tgt': [results_tgt, EGEDA_trans_tgt, EGEDA_own_tgt, EGEDA_nonspec_tgt]}
         
         for scenario in scenario_dict.keys():
-            # Data frame with results from other sectors to use to build trajectories to fill the trans and own df's
-            tfc_df = scenario_dict[scenario][0]
-            # Subset so only consumption categories are included
-            # Transformation results below no longer used. Only TFC trajectories are used for modelling of categories defined in this script
-            # trans_df = tfc_trans_df[(tfc_trans_df['sectors'].isin(['09_total_transformation_sector'])) &
-            #                         (tfc_trans_df['sub1sectors'] == 'x')].copy().reset_index(drop = True)
             
-            # for column in trans_df.columns:
-            #     if pd.api.types.is_numeric_dtype(trans_df[column]):
-            #         trans_df[column] = trans_df[column].abs()
-
-            tfc_df = tfc_df[(tfc_df['sectors'].isin(['12_total_final_consumption'])) &
-                            (tfc_df['sub1sectors'] == 'x')].copy().reset_index(drop = True)
-
-            # Subset so its only high level fuels
-            tfc_df = tfc_df[tfc_df['subfuels'] == 'x']
-                # .groupby(['scenarios', 'economy', 'sub1sectors', 'sub2sectors', 'sub3sectors', 'sub4sectors', 'subfuels', 'fuels'])\
-                #     .sum().reset_index().assign(sectors = 'TFC consumption')
+            scenario_df = scenario_dict[scenario][0].copy()
             
-            # Now only keep relevant fuels 
-            tfc_df = tfc_df[tfc_df['fuels'].isin(relevant_fuels)].copy().reset_index(drop = True)
+            tfc_df = scenario_df[(scenario_df['sectors'].isin(['12_total_final_consumption'])) & (scenario_df['fuels'].isin(relevant_fuels)) & (scenario_df['subtotal_results'] == True)].copy().reset_index(drop = True)
+            ########
+            #and minus the pipeline and non specified use from the gas consumption in case it is in the folder, so got merged in with the other demand data
+            pipeline_nonspecified_use = scenario_df[(scenario_df['sub1sectors'].isin(['15_05_pipeline_transport', '16_05_nonspecified_others'])) & (scenario_df['fuels'].isin(relevant_fuels)) & (scenario_df['subtotal_results'] == False)].copy().reset_index(drop = True)
+            if len(pipeline_nonspecified_use) > 0:
+                #sum pipeline use and nonspecified others
+                pipeline_nonspecified_use = pipeline_nonspecified_use.groupby(['scenarios','economy','fuels']).sum().reset_index()
+                #double check the two dataframes are 1 row each and then subtract the pipeline use from the gas consumption
+                if len(tfc_df) != len(pipeline_nonspecified_use):
+                    raise Exception('The consumption dataframes are not the expected length')
+                tfc_df[proj_years] = tfc_df[proj_years] - pipeline_nonspecified_use[proj_years]
+            ########
+
             tfc_df = tfc_df.fillna(0)
             
             # Dataframes to populate
