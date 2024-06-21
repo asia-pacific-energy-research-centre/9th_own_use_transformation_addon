@@ -110,7 +110,7 @@ for economy in APEC_economies:
                 #double check the two dataframes are 1 row each and then subtract the pipeline use from the gas consumption
                 if len(tfc_df) != len(pipeline_nonspecified_use):
                     raise Exception('The consumption dataframes are not the expected length')
-                tfc_df[proj_years] = tfc_df[proj_years] - pipeline_nonspecified_use[proj_years]
+                tfc_df[proj_years_str] = tfc_df[proj_years_str] - pipeline_nonspecified_use[proj_years_str]
             ########
 
             tfc_df = tfc_df.fillna(0)
