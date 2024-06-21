@@ -101,16 +101,17 @@ for economy in APEC_economies:
             scenario_df = scenario_dict[scenario][0].copy()
             
             tfc_df = scenario_df[(scenario_df['sectors'].isin(['12_total_final_consumption'])) & (scenario_df['fuels'].isin(relevant_fuels)) & (scenario_df['subtotal_results'] == True)].copy().reset_index(drop = True)
+            tfc_fuels = tfc_df['fuels'].unique()
             ########
             #and minus the pipeline and non specified use from the gas consumption in case it is in the folder, so got merged in with the other demand data
-            pipeline_nonspecified_use = scenario_df[(scenario_df['sub1sectors'].isin(['15_05_pipeline_transport', '16_05_nonspecified_others'])) & (scenario_df['fuels'].isin(relevant_fuels)) & (scenario_df['subtotal_results'] == False)].copy().reset_index(drop = True)
+            pipeline_nonspecified_use = scenario_df[(scenario_df['sub1sectors'].isin(['15_05_pipeline_transport', '16_05_nonspecified_others'])) & (scenario_df['fuels'].isin(tfc_fuels)) & (scenario_df['subtotal_results'] == False)].copy().reset_index(drop = True)
             if len(pipeline_nonspecified_use) > 0:
                 #sum pipeline use and nonspecified others
                 pipeline_nonspecified_use = pipeline_nonspecified_use.groupby(['scenarios','economy','fuels']).sum().reset_index()
                 #double check the two dataframes are 1 row each and then subtract the pipeline use from the gas consumption
                 if len(tfc_df) != len(pipeline_nonspecified_use):
                     raise Exception('The consumption dataframes are not the expected length')
-                tfc_df[proj_years] = tfc_df[proj_years] - pipeline_nonspecified_use[proj_years]
+                tfc_df[proj_years_str] = tfc_df[proj_years_str] - pipeline_nonspecified_use[proj_years_str]
             ########
 
             tfc_df = tfc_df.fillna(0)
